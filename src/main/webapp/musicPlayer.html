@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+
+<!--
+Project name(项目名称)：vue_and_axios_implement_music_player
+  File name(文件名): musicPlayer
+  Authors(作者）: mao
+  Author QQ：1296193245
+  GitHub：https://github.com/maomao124/
+  Date(创建日期)： 2022/4/15
+  Time(创建时间)： 20:20
+  Description(描述)： 无
+-->
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>音乐播放器</title>
+    <script src="js/axios.js"></script>
+    <script src="js/vue.js"></script>
+    <link rel="stylesheet" href="css/musicPlayer.css">
+</head>
+<body>
+
+
+<div class="wrap">
+    <div class="play_wrap" id="player">
+        <div class="search_bar">
+            <img src="images/player_title.png" alt=""/>
+            <!-- 搜索歌曲 -->
+            <input type="text" autocomplete="off" v-model='query' @keyup.enter="searchMusic();"/>
+        </div>
+        <div class="center_con">
+            <!-- 搜索歌曲列表 -->
+            <div class='song_wrapper' ref='song_wrapper'>
+                <ul class="song_list">
+                    <li v-for="item in musicList">
+                        <!-- 点击放歌 -->
+                        <a href="javascript:;" @click='playMusic(item.id)'></a>
+                        <b>{{item.name}}</b>
+                        <span>
+                <i @click="playMv(item.mvid)" v-if="item.mvid!=0"></i>
+              </span>
+                    </li>
+
+                </ul>
+                <img src="images/line.png" class="switch_btn" alt="">
+            </div>
+            <!-- 歌曲信息容器 -->
+            <div class="player_con" :class="{playing:isPlay}">
+                <img src="images/player_bar.png" class="play_bar"/>
+                <!-- 黑胶碟片 -->
+                <img src="images/disc.png" class="disc autoRotate"/>
+                <img :src="coverUrl==''?'./images/cover.png':coverUrl" class="cover autoRotate"/>
+            </div>
+            <!-- 评论容器 -->
+            <div class="comment_wrapper" ref='comment_wrapper'>
+                <h5 class='title'>热门留言</h5>
+                <div class='comment_list'>
+
+                    <dl v-for="item in hotComments">
+                        <dt>
+                            <img :src="item.user.avatarUrl" alt=""/>
+                        </dt>
+                        <dd class="name">{{item.user.nickname}}</dd>
+                        <dd class="detail">
+                            {{item.content}}
+                        </dd>
+                    </dl>
+                </div>
+                <img src="images/line.png" class="right_line">
+            </div>
+        </div>
+        <div class="audio_con">
+            <audio ref='audio' @play="play" @pause="pause" :src="musicUrl" controls="controls" autoplay="autoplay"
+                   loop="loop"
+                   class="myaudio"></audio>
+        </div>
+        <div class="video_con" v-show="showVideo">
+            <video ref='video' :src="mvUrl" controls="controls"></video>
+            <div class="mask" @click="closeMv"></div>
+        </div>
+    </div>
+</div>
+
+
+<!--<script src="js/main.js"></script>-->
+<script>
+
+    axios.defaults.baseURL = 'https://autumnfish.cn';
+
+    var app = new Vue({
+        el: "#player",
+        data:
+            {
+                //查询的关键字：
+                query: "",
+                //歌曲数组：
+                musicList: [],
+                //歌曲的播放地址：
+                musicUrl: "",
+                //歌曲封面：
+                coverUrl: "",
+                //歌曲评论
+                hotComments: [],
+                //动画播放状态
+                isPlaying: false,
+                //遮罩层的显示状态
+                isShow: false,
+                // mv地址
+                mvUrl: "",
+                // 显示视频播放
+                showVideo: false,
+                // 是否正在播放
+                isPlay: false,
+
+
+            },
+
+        // 方法
+        methods:
+            {
+                // 搜索歌曲
+                searchMusic()
+                {
+                    if (this.query === 0)
+                    {
+                        return
+                    }
+
+                    //axios发起ajax请求
+                    axios({
+                        //请求的方式：
+                        method: "get",
+                        //请求的url:
+                        url: "/search",
+                        //url参数：
+                        params:
+                            {
+                                keywords: this.query
+                            },
+                        //头信息：
+                        headers:
+                            {},
+                        //请求体参数：
+                        data:
+                            {},
+                    }).then(response =>
+                    {
+                        //console.log(response);
+                        // 保存内容
+                        this.musicList = response.data.result.songs;
+
+                    }).catch(error =>
+                    {
+                        //console.log(error);
+                        alert("网络异常！");
+                    })
+
+                    // 清空搜索
+                    this.query = ''
+                },
+
+
+                // 播放歌曲
+                playMusic(musicId)
+                {
+                    var that = this;
+
+                    // 获取歌曲url
+                    //axios发起ajax请求
+                    axios({
+                        //请求的方式：
+                        method: "get",
+                        //请求的url:
+                        url: "song/url",
+                        //url参数：
+                        params:
+                            {
+                                id: musicId,
+                            },
+                        //头信息：
+                        headers:
+                            {},
+                        //请求体参数：
+                        data:
+                            {},
+                    }).then(response =>
+                    {
+                        //console.log(response);
+                        // 保存歌曲url地址
+                        this.musicUrl = response.data.data[0].url
+                    }).catch(error =>
+                    {
+                        //console.log(error);
+                        alert("网络异常！");
+                    })
+
+
+                    // 获取歌曲热门评论
+                    //axios发起ajax请求
+                    axios({
+                        //请求的方式：
+                        method: "get",
+                        //请求的url:
+                        url: "/comment/hot",
+                        //url参数：
+                        params:
+                            {
+                                type: 0,
+                                id: musicId
+                            },
+                        //头信息：
+                        headers:
+                            {},
+                        //请求体参数：
+                        data:
+                            {},
+                    }).then(response =>
+                    {
+                        //console.log(response);
+                        // 保存热门评论
+                        this.hotComments = response.data.hotComments
+                    }).catch(error =>
+                    {
+                        //console.log(error);
+                        alert("网络异常！");
+                    })
+
+
+                    //axios发起ajax请求
+                    axios({
+                        //请求的方式：
+                        method: "get",
+                        //请求的url:
+                        url: "/song/detail",
+                        //url参数：
+                        params:
+                            {
+                                ids: musicId
+                            },
+                        //头信息：
+                        headers:
+                            {},
+                        //请求体参数：
+                        data:
+                            {},
+                    }).then(response =>
+                    {
+                        //console.log(response);
+                        // 设置封面
+                        this.coverUrl = response.data.songs[0].al.picUrl
+
+                    }).catch(error =>
+                    {
+                        //console.log(error);
+                        alert("网络异常！");
+                    })
+
+                },
+                // audio的play事件
+                play()
+                {
+                    this.isPlay = true
+                    // 清空mv的信息
+                    this.mvUrl = ''
+                },
+                // audio的pause事件
+                pause()
+                {
+                    this.isPlay = false
+                },
+                // 播放mv
+                playMv(vid)
+                {
+                    if (vid)
+                    {
+                        this.showVideo = true;
+                        // 获取mv信息
+                        axios.get('/mv/url?id=' + vid).then(response =>
+                        {
+                            // console.log(response)
+                            // 暂停歌曲播放
+                            this.$refs.audio.pause()
+                            // 获取mv地址
+                            this.mvUrl = response.data.data.url
+                        })
+                    }
+                },
+                // 关闭mv界面
+                closeMv()
+                {
+                    this.showVideo = false
+                    this.$refs.video.pause()
+                },
+                // 搜索历史记录中的歌曲
+                historySearch(history)
+                {
+                    this.query = history
+                    this.searchMusic()
+                    this.showHistory = false;
+                }
+            },
+    })
+
+</script>
+</body>
+</html>
